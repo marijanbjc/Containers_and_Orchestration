@@ -1,0 +1,24 @@
+# Проблема: плавающий образ - тег latest
+FROM python:latest
+
+COPY core_requirements.txt .
+
+RUN pip install --no-cache-dir -r core_requirements.txt
+
+WORKDIR /src
+
+# Копируем файлы проекта
+COPY src .
+
+# Монтируем постоянное хранилище
+VOLUME ["/src/data"]
+
+# Проблема: выше на 'COPY src' мы копируем весь проект до установки всех зависимостей
+# А файлы в проекте меняются часто, из-за чего не будет работать кеширование слоёв
+# и нам каждый раз при сборке образа нужно будет ждать, пока по-честному перенесутся
+# файлы, а затем пока по честному поставятся зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Проблема: контейнер запускается от пользователя root (небезопасно)
+ENTRYPOINT ["python", "main.py"]
+CMD ["/src/data"]

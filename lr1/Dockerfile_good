@@ -1,0 +1,30 @@
+FROM python:3.14-alpine
+
+# 1. Создаем группу appuser и пользователя appuser внутри неё
+RUN adduser -D appuser
+
+# 2. Переходим в рабочую папку внутри домашней директории пользователя
+WORKDIR /home/appuser/src
+
+# 3. Копируем файлы с зависимостями и устанавливаем все библиотеки
+COPY core_requirements.txt src/requirements.txt ./
+RUN pip install --no-cache-dir -r core_requirements.txt && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 4. Только после установки библиотек копируем проект:
+# теперь при пересборке образа установленные библиотеки
+# (если мы их не меняли в core_requirements и requirements),
+# не будут переустанавливаться при каждом изменении файла проекта.
+# Копируем проект с правами USER.
+COPY --chown=appuser:appuser src/ .
+
+# Создаём в контейнере директорию и даём к ней доступ нашему USER
+RUN mkdir -p /home/appuser/src/data && chown appuser:appuser /home/appuser/src/data
+
+USER appuser
+
+# Монтируем постоянное хранилище к этой директории
+VOLUME ["/home/appuser/src/data"]
+
+ENTRYPOINT ["python", "main.py"]
+CMD ["./data"]
